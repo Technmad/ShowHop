@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: changeme-local-only
+    volumes:
+      - showhop-db-data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    restart: unless-stopped
+    ports:
+      - "9090:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: changeme-local-only
+    volumes:
+      - showhop-keycloak-data:/opt/keycloak/data
+    command:
+      - start-dev
+      - --db=dev-file
+
+volumes:
+  showhop-db-data:
+    driver: local
+  showhop-keycloak-data:
+    driver: local
