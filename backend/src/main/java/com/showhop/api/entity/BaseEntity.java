@@ -6,16 +6,24 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.time.Instant;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Common audit timestamps for every entity. Stamped manually rather than via
  * Spring Data JPA auditing so entities have no dependency on an
  * {@code AuditorAware}/{@code @EnableJpaAuditing} setup they don't need yet.
+ *
+ * <p>{@code @SuperBuilder} here (even though callers never set these fields
+ * directly) is required so subclasses can use {@code @SuperBuilder} too —
+ * Lombok needs every class in the hierarchy to opt in.
  */
 @MappedSuperclass
 @Getter
 @Setter
+@NoArgsConstructor
+@SuperBuilder
 public abstract class BaseEntity {
 
   @Column(name = "created_at", nullable = false, updatable = false)
