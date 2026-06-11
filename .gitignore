@@ -23,6 +23,7 @@ frontend/dist/
 frontend/dist-ssr/
 frontend/.vite/
 frontend/coverage/
+frontend/*.tsbuildinfo
 *.local
 
 # Env / secrets
