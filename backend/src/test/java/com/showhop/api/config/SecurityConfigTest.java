@@ -1,6 +1,6 @@
 package com.showhop.api.config;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static com.showhop.api.testsupport.JwtTestSupport.authenticatedAs;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,10 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * Verifies the authorization rules themselves -- independent of whether a
@@ -50,7 +47,7 @@ class SecurityConfigTest {
   @Test
   void anOrganizerCanReachTheEventsPathIncludingSubResources() throws Exception {
     mockMvc.perform(get("/api/v1/events/" + UUID.randomUUID()).with(authenticatedAs("ORGANIZER")))
-        .andExpect(status().isNotFound()); // matcher lets it through; no controller yet
+        .andExpect(status().isNotFound()); // matcher lets it through; controller 404s the id
   }
 
   @Test
@@ -73,20 +70,5 @@ class SecurityConfigTest {
 
     mockMvc.perform(post(purchasePath).with(authenticatedAs("ATTENDEE")))
         .andExpect(status().isNotFound()); // matcher lets it through; no controller yet
-  }
-
-  /**
-   * A JWT with a real UUID subject (not the postprocessor's default "user")
-   * so it survives {@code UserProvisioningFilter}, which parses the subject
-   * as a UUID.
-   */
-  private RequestPostProcessor authenticatedAs(String role) {
-    UUID subject = UUID.randomUUID();
-    JwtRequestPostProcessor processor = jwt()
-        .jwt(jwt -> jwt.subject(subject.toString())
-            .claim("preferred_username", "test-" + role.toLowerCase())
-            .claim("email", subject + "@example.com"))
-        .authorities(new SimpleGrantedAuthority("ROLE_" + role));
-    return processor;
   }
 }
