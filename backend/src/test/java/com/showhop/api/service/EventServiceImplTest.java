@@ -105,6 +105,16 @@ class EventServiceImplTest {
     verify(eventRepository, org.mockito.Mockito.never()).delete(any());
   }
 
+  @Test
+  void getPublishedEventOnlyEverReturnsPublishedEvents() {
+    UUID eventId = UUID.randomUUID();
+    when(eventRepository.findByIdAndStatus(eventId, EventStatus.PUBLISHED))
+        .thenReturn(Optional.empty());
+
+    assertThat(eventService.getPublishedEvent(eventId)).isEmpty();
+    verify(eventRepository).findByIdAndStatus(eventId, EventStatus.PUBLISHED);
+  }
+
   private EventRequestDto anEventRequest() {
     Instant now = Instant.now();
     return new EventRequestDto(

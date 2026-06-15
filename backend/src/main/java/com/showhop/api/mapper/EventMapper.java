@@ -2,6 +2,7 @@ package com.showhop.api.mapper;
 
 import com.showhop.api.dto.EventRequestDto;
 import com.showhop.api.dto.EventResponseDto;
+import com.showhop.api.dto.PublishedEventResponseDto;
 import com.showhop.api.entity.Event;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -24,4 +25,6 @@ public interface EventMapper {
 
   @Mapping(target = "organizerId", source = "organizer.id")
   EventResponseDto toResponseDto(Event event);
+
+  PublishedEventResponseDto toPublishedResponseDto(Event event);
 }
