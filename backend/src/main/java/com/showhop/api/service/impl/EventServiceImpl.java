@@ -3,6 +3,7 @@ package com.showhop.api.service.impl;
 import com.showhop.api.dto.EventRequestDto;
 import com.showhop.api.entity.Event;
 import com.showhop.api.entity.User;
+import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.exception.EventNotFoundException;
 import com.showhop.api.exception.UserNotFoundException;
 import com.showhop.api.mapper.EventMapper;
@@ -65,5 +66,20 @@ public class EventServiceImpl implements EventService {
   public void deleteEventForOrganizer(UUID organizerId, UUID eventId) {
     eventRepository.findByIdAndOrganizerId(eventId, organizerId)
         .ifPresent(eventRepository::delete);
+  }
+
+  @Override
+  public Page<Event> listPublishedEvents(Pageable pageable) {
+    return eventRepository.findByStatus(EventStatus.PUBLISHED, pageable);
+  }
+
+  @Override
+  public Page<Event> searchPublishedEvents(String query, Pageable pageable) {
+    return eventRepository.searchPublished(query, pageable);
+  }
+
+  @Override
+  public Optional<Event> getPublishedEvent(UUID eventId) {
+    return eventRepository.findByIdAndStatus(eventId, EventStatus.PUBLISHED);
   }
 }

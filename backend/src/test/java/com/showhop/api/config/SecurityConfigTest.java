@@ -29,7 +29,7 @@ class SecurityConfigTest {
   @Test
   void publishedEventBrowsingIsPublic() throws Exception {
     mockMvc.perform(get("/api/v1/published-events"))
-        .andExpect(status().isNotFound()); // no controller yet, but not 401/403
+        .andExpect(status().isOk()); // no auth needed -- an empty page, not 401/403
   }
 
   @Test
