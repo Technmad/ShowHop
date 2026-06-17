@@ -12,6 +12,7 @@ import com.showhop.api.exception.UserNotFoundException;
 import com.showhop.api.repository.TicketRepository;
 import com.showhop.api.repository.TicketTypeRepository;
 import com.showhop.api.repository.UserRepository;
+import com.showhop.api.service.QrCodeService;
 import com.showhop.api.service.TicketPurchaseService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class TicketPurchaseServiceImpl implements TicketPurchaseService {
   private final TicketTypeRepository ticketTypeRepository;
   private final TicketRepository ticketRepository;
   private final UserRepository userRepository;
+  private final QrCodeService qrCodeService;
 
   @Override
   @Transactional
@@ -59,6 +61,9 @@ public class TicketPurchaseServiceImpl implements TicketPurchaseService {
         .status(TicketStatus.PURCHASED)
         .build();
 
-    return ticketRepository.save(ticket);
+    Ticket savedTicket = ticketRepository.save(ticket);
+    qrCodeService.generateQrCode(savedTicket);
+
+    return savedTicket;
   }
 }

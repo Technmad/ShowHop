@@ -33,6 +33,8 @@ class TicketPurchaseServiceImplTest {
   private TicketRepository ticketRepository;
   @Mock
   private UserRepository userRepository;
+  @Mock
+  private QrCodeService qrCodeService;
 
   @InjectMocks
   private TicketPurchaseServiceImpl ticketPurchaseService;
