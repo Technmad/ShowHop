@@ -52,6 +52,18 @@ class TicketControllerTest {
 
     mockMvc.perform(get("/api/v1/tickets/" + ticketId + "/qr-codes").with(someoneElse))
         .andExpect(status().isNotFound());
+
+    mockMvc.perform(get("/api/v1/tickets/" + ticketId).with(buyer))
+        .andExpect(status().isOk())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+            .jsonPath("$.status").value("PURCHASED"));
+    mockMvc.perform(get("/api/v1/tickets/" + ticketId).with(someoneElse))
+        .andExpect(status().isNotFound());
+
+    mockMvc.perform(get("/api/v1/tickets").with(buyer))
+        .andExpect(status().isOk())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+            .jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)));
   }
 
   private UUID createPublishedEvent(RequestPostProcessor organizer) throws Exception {
