@@ -23,8 +23,13 @@ Types: `feat`, `fix`, `chore`, `test`, `docs`, `refactor`. Scope is usually
 
 ## Before opening a PR
 
-- Backend: `./mvnw test` from `backend/`.
+- Backend unit/slice tests: `./mvnw test` from `backend/`.
+- Backend integration tests too: `./mvnw verify`, which additionally runs
+  `*IT` classes against a real PostgreSQL. Start it first with
+  `docker compose up -d db` -- these tests skip themselves (not fail) if
+  nothing is listening on `localhost:5432`. See docs/adr/0001 for why
+  they target compose-managed Postgres rather than Testcontainers.
 - Frontend: `npm run build` from `frontend/` (and `npm test` once a test
   runner is configured).
 
-Both must pass before merging.
+All must pass before merging.
