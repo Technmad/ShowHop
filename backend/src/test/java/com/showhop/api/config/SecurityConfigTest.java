@@ -56,7 +56,7 @@ class SecurityConfigTest {
         .andExpect(status().isForbidden());
 
     mockMvc.perform(post("/api/v1/ticket-validations").with(authenticatedAs("STAFF")))
-        .andExpect(status().isNotFound()); // matcher lets it through; no controller yet
+        .andExpect(status().isBadRequest()); // matcher lets it through; empty body fails validation, not auth
   }
 
   @Test

@@ -1,15 +1,16 @@
 package com.showhop.api.web;
 
 import static com.showhop.api.testsupport.JwtTestSupport.authenticatedAs;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.showhop.api.dto.EventRequestDto;
 import com.showhop.api.dto.TicketTypeRequestDto;
+import com.showhop.api.dto.TicketValidationRequestDto;
 import com.showhop.api.entity.enums.EventStatus;
+import com.showhop.api.entity.enums.TicketValidationMethod;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -23,7 +24,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class TicketControllerTest {
+class TicketValidationControllerTest {
 
   @Autowired
   private MockMvc mockMvc;
@@ -31,39 +32,45 @@ class TicketControllerTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void aBuyerCanFetchTheirOwnTicketsQrCodeButNoOneElseCan() throws Exception {
+  void aTicketScansValidOnceThenInvalidOnASecondAttempt() throws Exception {
     RequestPostProcessor organizer = authenticatedAs("ORGANIZER");
-    RequestPostProcessor buyer = authenticatedAs("ATTENDEE");
-    RequestPostProcessor someoneElse = authenticatedAs("ATTENDEE");
+    RequestPostProcessor attendee = authenticatedAs("ATTENDEE");
+    RequestPostProcessor staff = authenticatedAs("STAFF");
 
     UUID eventId = createPublishedEvent(organizer);
     UUID ticketTypeId = createTicketType(organizer, eventId);
+    UUID ticketId = purchaseTicket(attendee, eventId, ticketTypeId);
 
-    String purchaseJson = mockMvc.perform(post(
-            "/api/v1/published-events/" + eventId + "/ticket-types/" + ticketTypeId + "/tickets")
-            .with(buyer))
-        .andExpect(status().isCreated())
-        .andReturn().getResponse().getContentAsString();
-    UUID ticketId = UUID.fromString(objectMapper.readTree(purchaseJson).get("id").asText());
+    TicketValidationRequestDto request =
+        new TicketValidationRequestDto(ticketId, TicketValidationMethod.QR_SCAN);
 
-    mockMvc.perform(get("/api/v1/tickets/" + ticketId + "/qr-codes").with(buyer))
+    mockMvc.perform(post("/api/v1/ticket-validations")
+            .with(staff)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.IMAGE_PNG));
+        .andExpect(jsonPath("$.status").value("VALID"));
 
-    mockMvc.perform(get("/api/v1/tickets/" + ticketId + "/qr-codes").with(someoneElse))
-        .andExpect(status().isNotFound());
-
-    mockMvc.perform(get("/api/v1/tickets/" + ticketId).with(buyer))
+    // Same ticket, scanned again -- must not admit twice.
+    mockMvc.perform(post("/api/v1/ticket-validations")
+            .with(staff)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
-        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-            .jsonPath("$.status").value("PURCHASED"));
-    mockMvc.perform(get("/api/v1/tickets/" + ticketId).with(someoneElse))
-        .andExpect(status().isNotFound());
+        .andExpect(jsonPath("$.status").value("INVALID"));
+  }
 
-    mockMvc.perform(get("/api/v1/tickets").with(buyer))
-        .andExpect(status().isOk())
-        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-            .jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)));
+  @Test
+  void onlyStaffCanValidateTickets() throws Exception {
+    RequestPostProcessor attendee = authenticatedAs("ATTENDEE");
+    TicketValidationRequestDto request =
+        new TicketValidationRequestDto(UUID.randomUUID(), TicketValidationMethod.MANUAL);
+
+    mockMvc.perform(post("/api/v1/ticket-validations")
+            .with(attendee)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden());
   }
 
   private UUID createPublishedEvent(RequestPostProcessor organizer) throws Exception {
@@ -87,6 +94,16 @@ class TicketControllerTest {
             .with(organizer)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andReturn().getResponse().getContentAsString();
+    return UUID.fromString(objectMapper.readTree(json).get("id").asText());
+  }
+
+  private UUID purchaseTicket(RequestPostProcessor buyer, UUID eventId, UUID ticketTypeId)
+      throws Exception {
+    String json = mockMvc.perform(post(
+            "/api/v1/published-events/" + eventId + "/ticket-types/" + ticketTypeId + "/tickets")
+            .with(buyer))
         .andExpect(status().isCreated())
         .andReturn().getResponse().getContentAsString();
     return UUID.fromString(objectMapper.readTree(json).get("id").asText());
