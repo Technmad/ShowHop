@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.showhop.api.dto.TicketTypeRequestDto;
 import com.showhop.api.entity.Event;
 import com.showhop.api.entity.TicketType;
+import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.exception.EventNotFoundException;
 import com.showhop.api.exception.TicketTypeNotFoundException;
 import com.showhop.api.mapper.TicketTypeMapper;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class TicketTypeServiceImplTest {
@@ -93,6 +95,17 @@ class TicketTypeServiceImplTest {
     ticketTypeService.deleteTicketType(organizerId, eventId, ticketTypeId);
 
     verify(ticketTypeRepository, org.mockito.Mockito.never()).delete(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void listTicketTypesForPublishedEventRejectsAnUnpublishedEvent() {
+    UUID eventId = UUID.randomUUID();
+    when(eventRepository.findByIdAndStatus(eventId, EventStatus.PUBLISHED))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() ->
+        ticketTypeService.listTicketTypesForPublishedEvent(eventId, PageRequest.of(0, 10)))
+        .isInstanceOf(EventNotFoundException.class);
   }
 
   private TicketTypeRequestDto aRequest() {

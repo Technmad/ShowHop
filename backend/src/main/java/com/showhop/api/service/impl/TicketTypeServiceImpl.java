@@ -3,6 +3,7 @@ package com.showhop.api.service.impl;
 import com.showhop.api.dto.TicketTypeRequestDto;
 import com.showhop.api.entity.Event;
 import com.showhop.api.entity.TicketType;
+import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.exception.EventNotFoundException;
 import com.showhop.api.exception.TicketTypeNotFoundException;
 import com.showhop.api.mapper.TicketTypeMapper;
@@ -70,6 +71,14 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     eventOwnedBy(organizerId, eventId);
     ticketTypeRepository.findByIdAndEventId(ticketTypeId, eventId)
         .ifPresent(ticketTypeRepository::delete);
+  }
+
+  @Override
+  public Page<TicketType> listTicketTypesForPublishedEvent(UUID eventId, Pageable pageable) {
+    eventRepository.findByIdAndStatus(eventId, EventStatus.PUBLISHED)
+        .orElseThrow(() -> new EventNotFoundException(
+            "Published event with id '%s' was not found".formatted(eventId)));
+    return ticketTypeRepository.findByEventId(eventId, pageable);
   }
 
   private Event eventOwnedBy(UUID organizerId, UUID eventId) {

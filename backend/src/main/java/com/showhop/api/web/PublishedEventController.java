@@ -1,10 +1,13 @@
 package com.showhop.api.web;
 
 import com.showhop.api.dto.PublishedEventResponseDto;
+import com.showhop.api.dto.TicketTypeResponseDto;
 import com.showhop.api.entity.Event;
 import com.showhop.api.exception.EventNotFoundException;
 import com.showhop.api.mapper.EventMapper;
+import com.showhop.api.mapper.TicketTypeMapper;
 import com.showhop.api.service.EventService;
+import com.showhop.api.service.TicketTypeService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,8 @@ public class PublishedEventController {
 
   private final EventService eventService;
   private final EventMapper eventMapper;
+  private final TicketTypeService ticketTypeService;
+  private final TicketTypeMapper ticketTypeMapper;
 
   @GetMapping
   public Page<PublishedEventResponseDto> listPublishedEvents(
@@ -39,5 +44,12 @@ public class PublishedEventController {
         .map(eventMapper::toPublishedResponseDto)
         .orElseThrow(() -> new EventNotFoundException(
             "Event with id '%s' was not found".formatted(eventId)));
+  }
+
+  @GetMapping("/{eventId}/ticket-types")
+  public Page<TicketTypeResponseDto> listTicketTypes(
+      @PathVariable UUID eventId, Pageable pageable) {
+    return ticketTypeService.listTicketTypesForPublishedEvent(eventId, pageable)
+        .map(ticketTypeMapper::toResponseDto);
   }
 }

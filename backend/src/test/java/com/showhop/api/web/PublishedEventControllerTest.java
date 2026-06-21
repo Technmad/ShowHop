@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.showhop.api.dto.EventRequestDto;
+import com.showhop.api.dto.TicketTypeRequestDto;
 import com.showhop.api.entity.enums.EventStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -38,8 +40,11 @@ class PublishedEventControllerTest {
         .andExpect(status().isNotFound());
     mockMvc.perform(get("/api/v1/published-events?q=Autumn"))
         .andExpect(jsonPath("$.content", hasSize(0)));
+    mockMvc.perform(get("/api/v1/published-events/" + eventId + "/ticket-types"))
+        .andExpect(status().isNotFound());
 
     publish(organizer, eventId);
+    createTicketType(organizer, eventId);
 
     mockMvc.perform(get("/api/v1/published-events/" + eventId))
         .andExpect(status().isOk())
@@ -49,6 +54,20 @@ class PublishedEventControllerTest {
         .andExpect(jsonPath("$.organizerId").doesNotExist());
     mockMvc.perform(get("/api/v1/published-events?q=autumn"))
         .andExpect(jsonPath("$.content", hasSize(1)));
+    mockMvc.perform(get("/api/v1/published-events/" + eventId + "/ticket-types"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].name").value("General Admission"));
+  }
+
+  private void createTicketType(RequestPostProcessor organizer, UUID eventId) throws Exception {
+    TicketTypeRequestDto request =
+        new TicketTypeRequestDto("General Admission", null, new BigDecimal("29.99"), 100);
+    mockMvc.perform(post("/api/v1/events/" + eventId + "/ticket-types")
+            .with(organizer)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated());
   }
 
   private UUID createEvent(RequestPostProcessor organizer, EventStatus status) throws Exception {
