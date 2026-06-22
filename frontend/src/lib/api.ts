@@ -41,3 +41,19 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   return (await response.json()) as T;
 }
+
+/** For binary responses (the QR code PNG) -- fetch()'s img-tag equivalent
+ *  can't attach an Authorization header, so this fetches the bytes
+ *  directly and hands back an object URL the caller must revoke. */
+export async function apiRequestBlobUrl(path: string, token: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(response.status, response.statusText);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
