@@ -6,6 +6,9 @@ import { HomePage } from "./routes/home-page";
 import { CallbackPage } from "./routes/callback-page";
 import { EventFormPage } from "./pages/organizer/event-form-page";
 import { OrganizerEventsPage } from "./pages/organizer/organizer-events-page";
+import { EventDetailsPage } from "./pages/attendee/event-details-page";
+import { MyTicketsPage } from "./pages/attendee/my-tickets-page";
+import { TicketDetailsPage } from "./pages/attendee/ticket-details-page";
 
 function App() {
   return (
@@ -15,6 +18,23 @@ function App() {
           <Route element={<AppLayout />}>
             <Route index element={<HomePage />} />
             <Route path="callback" element={<CallbackPage />} />
+            <Route path="events/:eventId" element={<EventDetailsPage />} />
+            <Route
+              path="tickets"
+              element={
+                <ProtectedRoute>
+                  <MyTicketsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="tickets/:ticketId"
+              element={
+                <ProtectedRoute>
+                  <TicketDetailsPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="organizer/events"
               element={
