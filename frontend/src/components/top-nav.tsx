@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
+import { useHasRole } from "../hooks/use-roles";
 
 export function TopNav() {
   const auth = useAuth();
+  const isStaff = useHasRole("STAFF");
 
   return (
     <header className="border-b border-slate-200">
@@ -14,6 +16,7 @@ export function TopNav() {
           <Link to="/">Browse events</Link>
           {auth.isAuthenticated && <Link to="/tickets">My tickets</Link>}
           <Link to="/organizer/events">Organize</Link>
+          {isStaff && <Link to="/staff/validate">Validate</Link>}
           {auth.isAuthenticated ? (
             <button onClick={() => auth.signoutRedirect()} className="underline">
               Sign out
