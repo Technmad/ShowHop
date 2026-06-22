@@ -9,6 +9,7 @@ import { OrganizerEventsPage } from "./pages/organizer/organizer-events-page";
 import { EventDetailsPage } from "./pages/attendee/event-details-page";
 import { MyTicketsPage } from "./pages/attendee/my-tickets-page";
 import { TicketDetailsPage } from "./pages/attendee/ticket-details-page";
+import { ValidateTicketPage } from "./pages/staff/validate-ticket-page";
 
 function App() {
   return (
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute requireRole="ORGANIZER">
                   <EventFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="staff/validate"
+              element={
+                <ProtectedRoute requireRole="STAFF">
+                  <ValidateTicketPage />
                 </ProtectedRoute>
               }
             />
