@@ -6,8 +6,11 @@ door by QR code or manual entry.
 
 ## Status
 
-Early development. See [`docs/PRD.md`](docs/PRD.md) for the full product
-requirements, current-state notes, and roadmap.
+`v0.1.0` — MVP complete: full event/ticket-type management, oversell-safe
+purchasing, QR codes, and staff validation, across a Spring Boot backend
+and a React frontend. See [`docs/PRD.md`](docs/PRD.md) for the full
+product requirements, current-state notes, and roadmap, and
+[`CHANGELOG.md`](CHANGELOG.md) for release notes.
 
 ## Repository layout
 
@@ -22,10 +25,15 @@ docs/       Product and design documentation
 Prerequisites: JDK 21, Node 20+, Docker.
 
 ```bash
-docker compose up -d      # PostgreSQL + Keycloak
+docker compose up -d      # PostgreSQL, Adminer, and Keycloak
 cd backend && ./mvnw spring-boot:run
 cd frontend && npm install && npm run dev
 ```
+
+Keycloak runs at `http://localhost:9090`. Create a realm named `showhop`,
+a public client `showhop-app` with redirect URI
+`http://localhost:5173/callback`, and realm roles `ORGANIZER`, `ATTENDEE`,
+`STAFF` assigned to your test users.
 
 ## License
 
