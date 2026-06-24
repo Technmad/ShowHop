@@ -147,9 +147,6 @@ Ordered by dependency, not by ease:
 - No organizer-facing "sales for this event" view — no backend endpoint
   for it yet, so no UI for it either (a deliberate scope decision, not an
   oversight left undocumented).
-- The staff validation flow has no camera-based QR scanning in the UI —
-  ticket ids are entered manually (or pasted from an external scanner).
-  Real camera scanning is a frontend enhancement, not a backend gap.
 - Integration tests target a `docker compose`-managed PostgreSQL rather
   than Testcontainers-managed containers, due to a Docker Desktop
   incompatibility in the original development environment (`docs/adr/0001`).
