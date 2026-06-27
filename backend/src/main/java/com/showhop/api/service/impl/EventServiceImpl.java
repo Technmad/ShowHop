@@ -4,12 +4,15 @@ import com.showhop.api.dto.EventRequestDto;
 import com.showhop.api.entity.Event;
 import com.showhop.api.entity.User;
 import com.showhop.api.entity.enums.EventStatus;
+import com.showhop.api.entity.enums.WebhookEventType;
 import com.showhop.api.exception.EventNotFoundException;
 import com.showhop.api.exception.UserNotFoundException;
 import com.showhop.api.mapper.EventMapper;
 import com.showhop.api.repository.EventRepository;
 import com.showhop.api.repository.UserRepository;
 import com.showhop.api.service.EventService;
+import com.showhop.api.service.WebhookEventPublisher;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ public class EventServiceImpl implements EventService {
   private final EventRepository eventRepository;
   private final UserRepository userRepository;
   private final EventMapper eventMapper;
+  private final WebhookEventPublisher webhookEventPublisher;
 
   @Override
   @Transactional
@@ -56,9 +60,19 @@ public class EventServiceImpl implements EventService {
         .orElseThrow(() -> new EventNotFoundException(
             "Event with id '%s' was not found".formatted(eventId)));
 
+    EventStatus previousStatus = event.getStatus();
     eventMapper.updateEntityFromDto(request, event);
 
-    return eventRepository.save(event);
+    Event saved = eventRepository.save(event);
+
+    if (previousStatus != EventStatus.PUBLISHED && saved.getStatus() == EventStatus.PUBLISHED) {
+      webhookEventPublisher.publish(organizerId, WebhookEventType.EVENT_PUBLISHED, Map.of(
+          "eventId", saved.getId().toString(),
+          "name", saved.getName(),
+          "venue", saved.getVenue()));
+    }
+
+    return saved;
   }
 
   @Override
