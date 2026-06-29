@@ -6,13 +6,16 @@ import com.showhop.api.entity.User;
 import com.showhop.api.entity.enums.TicketStatus;
 import com.showhop.api.entity.enums.TicketValidationMethod;
 import com.showhop.api.entity.enums.TicketValidationStatus;
+import com.showhop.api.entity.enums.WebhookEventType;
 import com.showhop.api.exception.TicketNotFoundException;
 import com.showhop.api.exception.UserNotFoundException;
 import com.showhop.api.repository.TicketRepository;
 import com.showhop.api.repository.TicketValidationRepository;
 import com.showhop.api.repository.UserRepository;
 import com.showhop.api.service.TicketValidationService;
+import com.showhop.api.service.WebhookEventPublisher;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class TicketValidationServiceImpl implements TicketValidationService {
   private final TicketRepository ticketRepository;
   private final TicketValidationRepository ticketValidationRepository;
   private final UserRepository userRepository;
+  private final WebhookEventPublisher webhookEventPublisher;
 
   @Override
   @Transactional
@@ -48,7 +52,16 @@ public class TicketValidationServiceImpl implements TicketValidationService {
         .validatedAt(Instant.now())
         .build();
 
-    return ticketValidationRepository.save(validation);
+    TicketValidation saved = ticketValidationRepository.save(validation);
+
+    webhookEventPublisher.publish(
+        ticket.getTicketType().getEvent().getOrganizer().getId(),
+        WebhookEventType.TICKET_VALIDATED, Map.of(
+            "ticketId", ticket.getId().toString(),
+            "status", status.name(),
+            "method", method.name()));
+
+    return saved;
   }
 
   private TicketValidationStatus decideStatus(Ticket ticket) {
