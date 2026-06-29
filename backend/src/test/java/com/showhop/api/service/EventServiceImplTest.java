@@ -3,6 +3,7 @@ package com.showhop.api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +35,8 @@ class EventServiceImplTest {
   private UserRepository userRepository;
   @Mock
   private EventMapper eventMapper;
+  @Mock
+  private WebhookEventPublisher webhookEventPublisher;
 
   @InjectMocks
   private EventServiceImpl eventService;
@@ -79,6 +82,47 @@ class EventServiceImplTest {
 
     verify(eventMapper).updateEntityFromDto(request, existing);
     verify(eventRepository).save(existing);
+  }
+
+  @Test
+  void updateEventForOrganizerPublishesAWebhookEventOnlyOnTheTransitionToPublished() {
+    UUID organizerId = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    Event draft = Event.builder()
+        .id(eventId).name("Autumn Tech Meetup").venue("Riverside Hall")
+        .status(EventStatus.DRAFT).build();
+    EventRequestDto request = anEventRequest();
+
+    when(eventRepository.findByIdAndOrganizerId(eventId, organizerId))
+        .thenReturn(Optional.of(draft));
+    org.mockito.Mockito.doAnswer(invocation -> {
+      Event target = invocation.getArgument(1);
+      target.setStatus(EventStatus.PUBLISHED);
+      return null;
+    }).when(eventMapper).updateEntityFromDto(request, draft);
+    when(eventRepository.save(draft)).thenReturn(draft);
+
+    eventService.updateEventForOrganizer(organizerId, eventId, request);
+
+    verify(webhookEventPublisher).publish(
+        eq(organizerId), eq(com.showhop.api.entity.enums.WebhookEventType.EVENT_PUBLISHED), any());
+  }
+
+  @Test
+  void updateEventForOrganizerDoesNotRepublishWhenAlreadyPublished() {
+    UUID organizerId = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    Event alreadyPublished = Event.builder().id(eventId).status(EventStatus.PUBLISHED).build();
+    EventRequestDto request = anEventRequest();
+
+    when(eventRepository.findByIdAndOrganizerId(eventId, organizerId))
+        .thenReturn(Optional.of(alreadyPublished));
+    when(eventRepository.save(alreadyPublished)).thenReturn(alreadyPublished);
+
+    eventService.updateEventForOrganizer(organizerId, eventId, request);
+
+    verify(webhookEventPublisher, org.mockito.Mockito.never())
+        .publish(any(), any(), any());
   }
 
   @Test

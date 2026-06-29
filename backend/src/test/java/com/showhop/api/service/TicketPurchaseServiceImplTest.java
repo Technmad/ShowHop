@@ -35,6 +35,8 @@ class TicketPurchaseServiceImplTest {
   private UserRepository userRepository;
   @Mock
   private QrCodeService qrCodeService;
+  @Mock
+  private WebhookEventPublisher webhookEventPublisher;
 
   @InjectMocks
   private TicketPurchaseServiceImpl ticketPurchaseService;
@@ -52,12 +54,20 @@ class TicketPurchaseServiceImplTest {
     when(ticketRepository.countByTicketTypeIdAndStatus(ticketTypeId, TicketStatus.PURCHASED))
         .thenReturn(9);
     when(ticketRepository.save(org.mockito.ArgumentMatchers.any(Ticket.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(invocation -> {
+          Ticket saved = invocation.getArgument(0);
+          saved.setId(UUID.randomUUID());
+          return saved;
+        });
 
     Ticket ticket = ticketPurchaseService.purchaseTicket(buyerId, eventId, ticketTypeId);
 
     assertThat(ticket.getStatus()).isEqualTo(TicketStatus.PURCHASED);
     assertThat(ticket.getPurchaser()).isSameAs(buyer);
+    org.mockito.Mockito.verify(webhookEventPublisher).publish(
+        org.mockito.ArgumentMatchers.eq(ticketType.getEvent().getOrganizer().getId()),
+        org.mockito.ArgumentMatchers.eq(com.showhop.api.entity.enums.WebhookEventType.TICKET_PURCHASED),
+        org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -108,7 +118,8 @@ class TicketPurchaseServiceImplTest {
   }
 
   private TicketType aPublishedTicketType(UUID eventId, UUID ticketTypeId, int totalAvailable) {
-    Event event = Event.builder().id(eventId).status(EventStatus.PUBLISHED).build();
+    User organizer = User.builder().id(UUID.randomUUID()).build();
+    Event event = Event.builder().id(eventId).status(EventStatus.PUBLISHED).organizer(organizer).build();
     return TicketType.builder()
         .id(ticketTypeId)
         .event(event)

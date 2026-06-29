@@ -3,8 +3,11 @@ package com.showhop.api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.showhop.api.entity.Event;
 import com.showhop.api.entity.Ticket;
+import com.showhop.api.entity.TicketType;
 import com.showhop.api.entity.User;
+import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.entity.enums.TicketStatus;
 import com.showhop.api.entity.enums.TicketValidationMethod;
 import com.showhop.api.entity.enums.TicketValidationStatus;
@@ -29,6 +32,8 @@ class TicketValidationServiceImplTest {
   private TicketValidationRepository ticketValidationRepository;
   @Mock
   private UserRepository userRepository;
+  @Mock
+  private WebhookEventPublisher webhookEventPublisher;
 
   @InjectMocks
   private TicketValidationServiceImpl ticketValidationService;
@@ -80,7 +85,11 @@ class TicketValidationServiceImplTest {
   }
 
   private void setUpTicketAndStaff(UUID ticketId, UUID staffId, TicketStatus status) {
-    Ticket ticket = Ticket.builder().id(ticketId).status(status).build();
+    User organizer = User.builder().id(UUID.randomUUID()).build();
+    Event event = Event.builder().id(UUID.randomUUID())
+        .status(EventStatus.PUBLISHED).organizer(organizer).build();
+    TicketType ticketType = TicketType.builder().id(UUID.randomUUID()).event(event).build();
+    Ticket ticket = Ticket.builder().id(ticketId).status(status).ticketType(ticketType).build();
     User staff = User.builder().id(staffId).build();
     when(ticketRepository.findById(ticketId)).thenReturn(Optional.of(ticket));
     when(userRepository.findById(staffId)).thenReturn(Optional.of(staff));
