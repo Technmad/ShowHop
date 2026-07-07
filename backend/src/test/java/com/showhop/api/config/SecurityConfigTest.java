@@ -60,6 +60,25 @@ class SecurityConfigTest {
   }
 
   @Test
+  void registeringAWebhookEndpointRequiresOrganizerRole() throws Exception {
+    mockMvc.perform(post("/api/v1/webhook-endpoints"))
+        .andExpect(status().isUnauthorized());
+
+    mockMvc.perform(post("/api/v1/webhook-endpoints").with(authenticatedAs("ATTENDEE")))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/v1/webhook-endpoints").with(authenticatedAs("ORGANIZER")))
+        .andExpect(status().isBadRequest()); // matcher lets it through; empty body fails validation
+  }
+
+  @Test
+  void replayingADeliveryRequiresOrganizerRole() throws Exception {
+    mockMvc.perform(post("/api/v1/webhook-deliveries/" + UUID.randomUUID() + "/replay")
+            .with(authenticatedAs("STAFF")))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void purchasingATicketUnderPublishedEventsOnlyRequiresAuthenticationNotAnOrganizerRole()
       throws Exception {
     String purchasePath = "/api/v1/published-events/" + UUID.randomUUID()
