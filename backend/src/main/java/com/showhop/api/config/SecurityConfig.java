@@ -26,6 +26,8 @@ public class SecurityConfig {
             // of silently falling through to the generic authenticated()
             // rule below.
             .requestMatchers("/api/v1/events/**").hasRole("ORGANIZER")
+            .requestMatchers("/api/v1/webhook-endpoints/**").hasRole("ORGANIZER")
+            .requestMatchers("/api/v1/webhook-deliveries/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/ticket-validations/**").hasRole("STAFF")
             .anyRequest().authenticated())
         .csrf(csrf -> csrf.disable())
