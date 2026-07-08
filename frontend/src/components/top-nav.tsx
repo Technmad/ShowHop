@@ -5,6 +5,7 @@ import { useHasRole } from "../hooks/use-roles";
 export function TopNav() {
   const auth = useAuth();
   const isStaff = useHasRole("STAFF");
+  const isOrganizer = useHasRole("ORGANIZER");
 
   return (
     <header className="border-b border-slate-200">
@@ -16,6 +17,7 @@ export function TopNav() {
           <Link to="/">Browse events</Link>
           {auth.isAuthenticated && <Link to="/tickets">My tickets</Link>}
           <Link to="/organizer">Organize</Link>
+          {isOrganizer && <Link to="/organizer/webhooks">Webhooks</Link>}
           {isStaff && <Link to="/staff/validate">Validate</Link>}
           {auth.isAuthenticated ? (
             <button onClick={() => auth.signoutRedirect()} className="underline">
