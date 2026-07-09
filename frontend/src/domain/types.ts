@@ -77,6 +77,55 @@ export interface TicketValidationResponse {
   validatedById: string;
 }
 
+export type WebhookEndpointStatus = "ACTIVE" | "DISABLED" | "CIRCUIT_OPEN";
+export type WebhookDeliveryState = "PENDING" | "IN_FLIGHT" | "RETRYING" | "SUCCEEDED" | "DEAD_LETTER";
+export type WebhookEventType = "EVENT_PUBLISHED" | "TICKET_PURCHASED" | "TICKET_VALIDATED";
+
+/** Wire-format event type names, matching WebhookEventType.wireValue() on the backend. */
+export const WEBHOOK_EVENT_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "event.published", label: "Event published" },
+  { value: "ticket.purchased", label: "Ticket purchased" },
+  { value: "ticket.validated", label: "Ticket validated" },
+];
+
+export interface WebhookEndpointRequest {
+  url: string;
+  subscribedEventTypes: string[];
+}
+
+export interface WebhookEndpointPatchRequest {
+  enabled?: boolean;
+  subscribedEventTypes?: string[];
+  rotateSecret?: boolean;
+}
+
+export interface WebhookEndpointResponse {
+  id: string;
+  url: string;
+  subscribedEventTypes: string[];
+  status: WebhookEndpointStatus;
+  consecutiveFailures: number;
+  circuitOpenedAt: string | null;
+  /** Present only immediately after registration or a secret rotation. */
+  secret: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookDeliveryResponse {
+  id: string;
+  eventType: WebhookEventType;
+  state: WebhookDeliveryState;
+  attempt: number;
+  maxAttempts: number;
+  probe: boolean;
+  lastResponseCode: number | null;
+  lastError: string | null;
+  nextRetryAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Page<T> {
   content: T[];
   page: {

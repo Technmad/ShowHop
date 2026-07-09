@@ -12,6 +12,8 @@ import { PurchasePage } from "./pages/attendee/purchase-page";
 import { MyTicketsPage } from "./pages/attendee/my-tickets-page";
 import { TicketDetailsPage } from "./pages/attendee/ticket-details-page";
 import { ValidateTicketPage } from "./pages/staff/validate-ticket-page";
+import { WebhookEndpointsPage } from "./pages/organizer/webhook-endpoints-page";
+import { WebhookDeliveriesPage } from "./pages/organizer/webhook-deliveries-page";
 
 function App() {
   return (
@@ -60,6 +62,22 @@ function App() {
               element={
                 <ProtectedRoute requireRole="ORGANIZER">
                   <EventFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="organizer/webhooks"
+              element={
+                <ProtectedRoute requireRole="ORGANIZER">
+                  <WebhookEndpointsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="organizer/webhooks/:endpointId/deliveries"
+              element={
+                <ProtectedRoute requireRole="ORGANIZER">
+                  <WebhookDeliveriesPage />
                 </ProtectedRoute>
               }
             />
