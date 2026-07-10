@@ -105,7 +105,18 @@ class WebhookDeliveryClaimPostgresIT {
     for (int i = 0; i < CONCURRENT_WORKERS; i++) {
       futures.add(pool.submit(() -> {
         startingGun.await();
-        worker.claimBatch();
+        // Mirrors how WebhookScheduler actually drives this: repeated
+        // polling ticks, not a single call. A single simultaneous burst
+        // of SELECT ... LIMIT 20 FOR UPDATE SKIP LOCKED across 6 workers
+        // isn't guaranteed to divide 30 rows evenly in one round -- a
+        // worker whose query snapshot lands early may see (and SKIP LOCK)
+        // rows another worker hasn't reached in its own scan yet, so some
+        // rows legitimately go unclaimed on that round and are picked up
+        // on the next one. What must never happen, at any round, is two
+        // workers claiming the same row -- that's what this test proves.
+        for (int round = 0; round < 20 && !worker.claimBatch().isEmpty(); round++) {
+          // keep polling until this worker finds nothing left to claim
+        }
         return null;
       }));
     }
