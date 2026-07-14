@@ -21,14 +21,23 @@ public class WebhookSigner {
   private static final String ALGORITHM = "HmacSHA256";
 
   public String sign(String secret, String timestamp, String payload) {
+    return hmacHex(secret, timestamp + "." + payload);
+  }
+
+  /**
+   * The raw HMAC-SHA256-over-hex primitive, factored out so
+   * {@code RazorpaySignatureVerifier} can reuse it for inbound Razorpay
+   * verification -- Razorpay signs the raw body directly (no
+   * "timestamp.payload" prefix, unlike this class's own outbound
+   * convention), so it needs this primitive, not {@link #sign}.
+   */
+  public String hmacHex(String secret, String data) {
     try {
       Mac mac = Mac.getInstance(ALGORITHM);
       mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
-      byte[] signed = mac.doFinal(
-          (timestamp + "." + payload).getBytes(StandardCharsets.UTF_8));
-      return toHex(signed);
+      return toHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-      throw new IllegalStateException("Unable to compute webhook signature", e);
+      throw new IllegalStateException("Unable to compute HMAC signature", e);
     }
   }
 

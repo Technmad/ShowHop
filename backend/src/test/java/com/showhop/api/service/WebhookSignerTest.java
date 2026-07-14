@@ -33,4 +33,12 @@ class WebhookSignerTest {
 
     assertThat(a).isNotEqualTo(b);
   }
+
+  @Test
+  void signDelegatesToTheRawHmacPrimitiveOverTimestampDotPayload() {
+    String viaSign = signer.sign("whsec_test", "1700000000", "payload");
+    String viaHmacHex = signer.hmacHex("whsec_test", "1700000000.payload");
+
+    assertThat(viaSign).isEqualTo(viaHmacHex);
+  }
 }
