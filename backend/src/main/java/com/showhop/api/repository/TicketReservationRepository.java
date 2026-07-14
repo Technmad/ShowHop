@@ -15,6 +15,20 @@ public interface TicketReservationRepository extends JpaRepository<TicketReserva
   Optional<TicketReservation> findByIdempotencyKey(String idempotencyKey);
 
   /**
+   * Joins ticketType eagerly: with open-in-view disabled, mapping this into
+   * a response DTO happens after the repository's own transaction has
+   * closed, so the association must already be initialized rather than
+   * left as a lazy proxy (same reasoning as
+   * {@code TicketRepository.findByIdAndPurchaserId}).
+   */
+  @Query("""
+      select r from TicketReservation r
+      join fetch r.ticketType
+      where r.id = :id and r.buyer.id = :buyerId
+      """)
+  Optional<TicketReservation> findByIdAndBuyerId(@Param("id") UUID id, @Param("buyerId") UUID buyerId);
+
+  /**
    * Locks the row for the duration of the caller's transaction -- used at
    * fulfillment time to re-assert the reservation is still HELD and
    * unexpired before a Ticket is created, the same lock discipline
