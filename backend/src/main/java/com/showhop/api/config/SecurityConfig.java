@@ -21,6 +21,12 @@ public class SecurityConfig {
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.GET, "/api/v1/published-events/**").permitAll()
+            // Razorpay has no bearer token to present -- trust is enforced
+            // entirely by HMAC signature verification inside
+            // RazorpayWebhookController/RazorpaySignatureVerifier, not
+            // Spring Security's JWT pipeline. The only unauthenticated POST
+            // matcher in this app; keep it scoped to exactly this path.
+            .requestMatchers(HttpMethod.POST, "/api/v1/razorpay/webhook").permitAll()
             // "/**", not just the bare path -- so sub-resources like
             // /api/v1/events/{id} are covered by the same matcher instead
             // of silently falling through to the generic authenticated()
