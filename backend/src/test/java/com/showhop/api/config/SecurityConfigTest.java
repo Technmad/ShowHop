@@ -90,4 +90,13 @@ class SecurityConfigTest {
     mockMvc.perform(post(purchasePath).with(authenticatedAs("ATTENDEE")))
         .andExpect(status().isNotFound()); // matcher lets it through; no controller yet
   }
+
+  @Test
+  void razorpayWebhookRequiresNoAuthenticationAtAll() throws Exception {
+    mockMvc.perform(post("/api/v1/razorpay/webhook"))
+        // matcher lets an entirely unauthenticated request through (no
+        // 401/403); it 400s only because the required signature header is
+        // missing, never because of Spring Security.
+        .andExpect(status().isBadRequest());
+  }
 }

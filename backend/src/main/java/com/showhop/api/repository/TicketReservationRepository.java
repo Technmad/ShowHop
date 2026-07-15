@@ -29,14 +29,25 @@ public interface TicketReservationRepository extends JpaRepository<TicketReserva
   Optional<TicketReservation> findByIdAndBuyerId(@Param("id") UUID id, @Param("buyerId") UUID buyerId);
 
   /**
-   * Locks the row for the duration of the caller's transaction -- used at
-   * fulfillment time to re-assert the reservation is still HELD and
-   * unexpired before a Ticket is created, the same lock discipline
-   * {@code TicketTypeRepository.findByIdWithLock} already validates.
+   * Locks the row for the duration of the caller's transaction, same lock
+   * discipline {@code TicketTypeRepository.findByIdWithLock} already
+   * validates.
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select r from TicketReservation r where r.id = :id")
   Optional<TicketReservation> findByIdWithLock(@Param("id") UUID id);
+
+  /**
+   * The fulfillment-time lookup: the inbound webhook only knows the
+   * Razorpay order id, not our reservation id. Locked so the "re-assert
+   * still HELD and unexpired before creating a Ticket" check (PRD
+   * &sect;4.2) is race-free against a concurrent reaper tick expiring the
+   * same row.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select r from TicketReservation r where r.razorpayOrderId = :razorpayOrderId")
+  Optional<TicketReservation> findByRazorpayOrderIdWithLock(
+      @Param("razorpayOrderId") String razorpayOrderId);
 
   /**
    * The "activeHolds" term in {@code available = totalAvailable - sold -
