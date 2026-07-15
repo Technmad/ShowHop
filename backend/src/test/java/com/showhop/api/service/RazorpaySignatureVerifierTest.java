@@ -13,7 +13,7 @@ class RazorpaySignatureVerifierTest {
   private final WebhookSigner webhookSigner = new WebhookSigner();
   private final RazorpayProperties properties = new RazorpayProperties(
       "rzp_test_key", "rzp_test_secret", "whsec_razorpay_test",
-      "https://api.razorpay.com/v1", Duration.ofMinutes(12));
+      "https://api.razorpay.com/v1", Duration.ofMinutes(12), 100);
   private final RazorpaySignatureVerifier verifier = new RazorpaySignatureVerifier(webhookSigner, properties);
 
   @Test
