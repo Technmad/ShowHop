@@ -25,7 +25,7 @@ class RazorpayRefundClientTest {
     RestClient.Builder builder = RestClient.builder();
     mockServer = MockRestServiceServer.bindTo(builder).build();
     RazorpayProperties properties = new RazorpayProperties(
-        "rzp_test_key", "rzp_test_secret", "whsec_test", "https://api.razorpay.com/v1", Duration.ofMinutes(12));
+        "rzp_test_key", "rzp_test_secret", "whsec_test", "https://api.razorpay.com/v1", Duration.ofMinutes(12), 100);
     client = new RazorpayRefundClient(builder.build(), properties);
   }
 

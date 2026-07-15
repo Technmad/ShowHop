@@ -18,7 +18,8 @@ public record RazorpayProperties(
     String keySecret,
     String webhookSecret,
     String baseUrl,
-    Duration reservationTtl) {
+    Duration reservationTtl,
+    int reaperBatchSize) {
 
   public RazorpayProperties {
     if (baseUrl == null || baseUrl.isBlank()) {
@@ -26,6 +27,9 @@ public record RazorpayProperties(
     }
     if (reservationTtl == null) {
       reservationTtl = Duration.ofMinutes(12);
+    }
+    if (reaperBatchSize <= 0) {
+      reaperBatchSize = 100;
     }
   }
 }
