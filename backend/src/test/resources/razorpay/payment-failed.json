@@ -1,0 +1,38 @@
+{
+  "entity": "event",
+  "account_id": "acc_test_ShowHopMerchant",
+  "event": "payment.failed",
+  "contains": ["payment"],
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_fixture_failed_001",
+        "entity": "payment",
+        "amount": 29900,
+        "currency": "INR",
+        "status": "failed",
+        "order_id": "{{ORDER_ID}}",
+        "invoice_id": null,
+        "international": false,
+        "method": "card",
+        "amount_refunded": 0,
+        "refund_status": null,
+        "captured": false,
+        "description": null,
+        "card_id": "card_fixture_001",
+        "bank": null,
+        "wallet": null,
+        "vpa": null,
+        "email": "buyer@example.com",
+        "contact": "+919800000000",
+        "notes": [],
+        "fee": null,
+        "tax": null,
+        "error_code": "BAD_REQUEST_ERROR",
+        "error_description": "Payment failed due to insufficient funds.",
+        "created_at": 1752570100
+      }
+    }
+  },
+  "created_at": 1752570105
+}

@@ -1,0 +1,38 @@
+{
+  "entity": "event",
+  "account_id": "acc_test_ShowHopMerchant",
+  "event": "payment.captured",
+  "contains": ["payment"],
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_fixture_captured_001",
+        "entity": "payment",
+        "amount": 29900,
+        "currency": "INR",
+        "status": "captured",
+        "order_id": "{{ORDER_ID}}",
+        "invoice_id": null,
+        "international": false,
+        "method": "upi",
+        "amount_refunded": 0,
+        "refund_status": null,
+        "captured": true,
+        "description": null,
+        "card_id": null,
+        "bank": null,
+        "wallet": null,
+        "vpa": "buyer@upi",
+        "email": "buyer@example.com",
+        "contact": "+919800000000",
+        "notes": [],
+        "fee": 708,
+        "tax": 108,
+        "error_code": null,
+        "error_description": null,
+        "created_at": 1752570000
+      }
+    }
+  },
+  "created_at": 1752570005
+}
