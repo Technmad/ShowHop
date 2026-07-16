@@ -87,7 +87,7 @@ class RazorpayWebhookServiceImplTest {
   void paymentCapturedFulfillsAHeldReservationAndPublishesTicketPurchased() {
     TicketReservation reservation = aReservation(
         ReservationState.HELD, Instant.now().plus(10, ChronoUnit.MINUTES), 1);
-    when(processedRazorpayEventRepository.existsById("evt_1")).thenReturn(false);
+    when(processedRazorpayEventRepository.existsById("payment.captured:pay_xyz1")).thenReturn(false);
     when(ticketReservationRepository.findByRazorpayOrderIdWithLock("order_abc"))
         .thenReturn(Optional.of(reservation));
     when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> {
@@ -97,10 +97,10 @@ class RazorpayWebhookServiceImplTest {
     });
     when(qrCodeService.generateQrCode(any(Ticket.class))).thenReturn(new QrCode());
 
-    webhookService.handle(paymentEvent("evt_1", "payment.captured", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.captured", "order_abc", "pay_xyz1"));
 
     assertThat(reservation.getState()).isEqualTo(ReservationState.CONFIRMED);
-    assertThat(reservation.getRazorpayPaymentId()).isEqualTo("pay_xyz");
+    assertThat(reservation.getRazorpayPaymentId()).isEqualTo("pay_xyz1");
     verify(ticketRepository, times(1)).save(any(Ticket.class));
     verify(webhookEventPublisher).publish(
         eq(reservation.getTicketType().getEvent().getOrganizer().getId()),
@@ -110,9 +110,9 @@ class RazorpayWebhookServiceImplTest {
 
   @Test
   void aRedeliveredEventIsANoOp() {
-    when(processedRazorpayEventRepository.existsById("evt_1")).thenReturn(true);
+    when(processedRazorpayEventRepository.existsById("payment.captured:pay_xyz1")).thenReturn(true);
 
-    webhookService.handle(paymentEvent("evt_1", "payment.captured", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.captured", "order_abc", "pay_xyz1"));
 
     verifyNoInteractions(ticketReservationRepository, ticketRepository, qrCodeService, webhookEventPublisher);
     verify(processedRazorpayEventRepository, never()).save(any());
@@ -122,11 +122,11 @@ class RazorpayWebhookServiceImplTest {
   void paymentFailedMarksAHeldReservationFailed() {
     TicketReservation reservation = aReservation(
         ReservationState.HELD, Instant.now().plus(10, ChronoUnit.MINUTES), 1);
-    when(processedRazorpayEventRepository.existsById("evt_2")).thenReturn(false);
+    when(processedRazorpayEventRepository.existsById("payment.failed:pay_xyz2")).thenReturn(false);
     when(ticketReservationRepository.findByRazorpayOrderIdWithLock("order_abc"))
         .thenReturn(Optional.of(reservation));
 
-    webhookService.handle(paymentEvent("evt_2", "payment.failed", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.failed", "order_abc", "pay_xyz2"));
 
     assertThat(reservation.getState()).isEqualTo(ReservationState.FAILED);
     verifyNoInteractions(ticketRepository, qrCodeService, webhookEventPublisher);
@@ -137,7 +137,7 @@ class RazorpayWebhookServiceImplTest {
     TicketReservation reservation = aReservation(
         ReservationState.HELD, Instant.now().minus(1, ChronoUnit.MINUTES), 1);
     reservation.getTicketType().setTotalAvailable(5);
-    when(processedRazorpayEventRepository.existsById("evt_3")).thenReturn(false);
+    when(processedRazorpayEventRepository.existsById("payment.captured:pay_xyz3")).thenReturn(false);
     when(ticketReservationRepository.findByRazorpayOrderIdWithLock("order_abc"))
         .thenReturn(Optional.of(reservation));
     when(ticketTypeRepository.findByIdWithLock(reservation.getTicketType().getId()))
@@ -145,13 +145,13 @@ class RazorpayWebhookServiceImplTest {
     when(ticketRepository.countByTicketTypeIdAndStatus(reservation.getTicketType().getId(), TicketStatus.PURCHASED))
         .thenReturn(5); // fully sold -- no capacity left for the expired hold
 
-    mockServer.expect(requestTo("https://api.razorpay.com/v1/payments/pay_xyz/refund"))
+    mockServer.expect(requestTo("https://api.razorpay.com/v1/payments/pay_xyz3/refund"))
         .andExpect(method(HttpMethod.POST))
         .andRespond(withSuccess("""
             {"id":"rfnd_1","status":"processed"}
             """, MediaType.APPLICATION_JSON));
 
-    webhookService.handle(paymentEvent("evt_3", "payment.captured", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.captured", "order_abc", "pay_xyz3"));
 
     mockServer.verify();
     assertThat(reservation.getState()).isEqualTo(ReservationState.FAILED);
@@ -164,7 +164,7 @@ class RazorpayWebhookServiceImplTest {
     TicketReservation reservation = aReservation(
         ReservationState.HELD, Instant.now().minus(1, ChronoUnit.MINUTES), 1);
     reservation.getTicketType().setTotalAvailable(5);
-    when(processedRazorpayEventRepository.existsById("evt_4")).thenReturn(false);
+    when(processedRazorpayEventRepository.existsById("payment.captured:pay_xyz4")).thenReturn(false);
     when(ticketReservationRepository.findByRazorpayOrderIdWithLock("order_abc"))
         .thenReturn(Optional.of(reservation));
     when(ticketTypeRepository.findByIdWithLock(reservation.getTicketType().getId()))
@@ -178,7 +178,7 @@ class RazorpayWebhookServiceImplTest {
     });
     when(qrCodeService.generateQrCode(any(Ticket.class))).thenReturn(new QrCode());
 
-    webhookService.handle(paymentEvent("evt_4", "payment.captured", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.captured", "order_abc", "pay_xyz4"));
 
     assertThat(reservation.getState()).isEqualTo(ReservationState.CONFIRMED);
     verify(ticketRepository, times(1)).save(any(Ticket.class));
@@ -186,9 +186,9 @@ class RazorpayWebhookServiceImplTest {
 
   @Test
   void anUnrecognizedEventTypeIsIgnored() {
-    when(processedRazorpayEventRepository.existsById("evt_5")).thenReturn(false);
+    when(processedRazorpayEventRepository.existsById("payment.authorized:pay_xyz5")).thenReturn(false);
 
-    webhookService.handle(paymentEvent("evt_5", "payment.authorized", "order_abc", "pay_xyz"));
+    webhookService.handle(paymentEvent("payment.authorized", "order_abc", "pay_xyz5"));
 
     verify(processedRazorpayEventRepository).save(any());
     verifyNoInteractions(ticketReservationRepository, ticketRepository, qrCodeService, webhookEventPublisher);
@@ -206,9 +206,12 @@ class RazorpayWebhookServiceImplTest {
         .razorpayOrderId("order_abc").build();
   }
 
-  private String paymentEvent(String eventId, String eventType, String orderId, String paymentId) {
+  private String paymentEvent(String eventType, String orderId, String paymentId) {
+    // No top-level "id" -- Razorpay's real webhook payload doesn't carry
+    // one (see RazorpayWebhookServiceImpl's dedupe-key comment); this
+    // fixture is deliberately shaped like the real thing.
     return """
-        {"id":"%s","event":"%s","payload":{"payment":{"entity":{"id":"%s","order_id":"%s"}}}}
-        """.formatted(eventId, eventType, paymentId, orderId);
+        {"event":"%s","payload":{"payment":{"entity":{"id":"%s","order_id":"%s"}}}}
+        """.formatted(eventType, paymentId, orderId);
   }
 }

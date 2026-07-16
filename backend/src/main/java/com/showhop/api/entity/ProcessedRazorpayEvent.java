@@ -12,9 +12,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * One row per Razorpay event id we've handled -- the inbound-idempotency
- * ledger (PRD &sect;4.2). Keyed by Razorpay's own event id, not a generated
- * UUID, since the whole point is a fast existence check on that exact id.
+ * One row per inbound Razorpay event we've handled -- the inbound-idempotency
+ * ledger (PRD &sect;4.2). Razorpay's classic webhook payload carries no
+ * top-level, stable event id (unlike Stripe), so {@code razorpayEventId} is
+ * actually a synthesized {@code eventType:paymentId} key, not a field
+ * Razorpay sends directly -- still a fast existence check on that key, not
+ * a generated UUID, which is the property that matters here.
  */
 @Entity
 @Table(name = "processed_razorpay_events")

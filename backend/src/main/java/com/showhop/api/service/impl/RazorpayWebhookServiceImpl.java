@@ -53,21 +53,31 @@ public class RazorpayWebhookServiceImpl implements RazorpayWebhookService {
   public void handle(String rawBody) {
     JsonNode event = parse(rawBody);
 
-    String eventId = event.path("id").asText(null);
-    if (eventId == null || processedRazorpayEventRepository.existsById(eventId)) {
-      return;
-    }
-    processedRazorpayEventRepository.save(
-        new ProcessedRazorpayEvent(eventId, Instant.now()));
-
+    String eventType = event.path("event").asText("");
     JsonNode paymentEntity = event.path("payload").path("payment").path("entity");
     String razorpayOrderId = paymentEntity.path("order_id").asText(null);
     String razorpayPaymentId = paymentEntity.path("id").asText(null);
+    if (razorpayPaymentId == null) {
+      return;
+    }
+
+    // Razorpay's classic webhook payload carries no top-level, stable
+    // event id (unlike Stripe) -- the dedupe key is synthesized from the
+    // event type plus the payment id instead, which is stable and unique
+    // per payment. Still the same inbound-idempotency discipline as the
+    // rest of the saga (PRD 4.2): a redelivered payment.captured for the
+    // same payment must be a no-op.
+    String dedupeKey = eventType + ":" + razorpayPaymentId;
+    if (processedRazorpayEventRepository.existsById(dedupeKey)) {
+      return;
+    }
+    processedRazorpayEventRepository.save(new ProcessedRazorpayEvent(dedupeKey, Instant.now()));
+
     if (razorpayOrderId == null) {
       return;
     }
 
-    switch (event.path("event").asText("")) {
+    switch (eventType) {
       case PAYMENT_CAPTURED -> handlePaymentCaptured(razorpayOrderId, razorpayPaymentId);
       case PAYMENT_FAILED -> handlePaymentFailed(razorpayOrderId, razorpayPaymentId);
       default -> { /* not an event this app fulfills or compensates on */ }
