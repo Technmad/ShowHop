@@ -13,10 +13,11 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string;
+  headers?: Record<string, string>;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
   }

@@ -63,6 +63,29 @@ export interface TicketResponse {
 export type TicketValidationMethod = "QR_SCAN" | "MANUAL";
 export type TicketValidationStatus = "VALID" | "INVALID" | "EXPIRED";
 
+export type ReservationState = "HELD" | "CONFIRMED" | "EXPIRED" | "CANCELLED" | "FAILED";
+
+export interface ReservationRequest {
+  quantity: number;
+}
+
+/** Everything needed to open Razorpay's embedded Checkout -- amount is in paise. */
+export interface ReservationInitiationResponse {
+  id: string;
+  state: ReservationState;
+  expiresAt: string;
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number;
+}
+
+/** What the buyer polls while Checkout is open -- only the webhook ever moves this to CONFIRMED. */
+export interface ReservationStatusResponse {
+  id: string;
+  state: ReservationState;
+  expiresAt: string;
+}
+
 export interface TicketValidationRequest {
   ticketId: string;
   method: TicketValidationMethod;
