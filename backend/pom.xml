@@ -152,6 +152,10 @@
               <artifactId>lombok</artifactId>
             </exclude>
           </excludes>
+          <!-- Same fix as the Failsafe argLine above: spring-boot:run talks
+               to the same real Postgres container and hits the identical
+               "Asia/Calcutta" tzdata-alias handshake failure without this. -->
+          <jvmArguments>-Duser.timezone=UTC</jvmArguments>
         </configuration>
       </plugin>
     </plugins>
