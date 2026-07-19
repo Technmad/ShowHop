@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.showhop.api.config.RazorpayProperties;
@@ -17,6 +18,7 @@ import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.entity.enums.ReservationState;
 import com.showhop.api.entity.enums.TicketStatus;
 import com.showhop.api.exception.EventNotFoundException;
+import com.showhop.api.exception.RazorpayIntegrationException;
 import com.showhop.api.exception.TicketReservationNotFoundException;
 import com.showhop.api.exception.TicketsSoldOutException;
 import com.showhop.api.repository.TicketRepository;
@@ -164,6 +166,34 @@ class ReservationServiceImplTest {
     assertThatThrownBy(
         () -> reservationService.reserve(buyerId, wrongEventId, ticketTypeId, 1, "idem-4"))
         .isInstanceOf(EventNotFoundException.class);
+  }
+
+  @Test
+  void aRazorpayOrderCreationFailureIsWrappedInACleanTypedException() {
+    UUID buyerId = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    UUID ticketTypeId = UUID.randomUUID();
+    TicketType ticketType = aPublishedTicketType(eventId, ticketTypeId, new BigDecimal("299.00"), 10);
+
+    when(userRepository.findById(buyerId)).thenReturn(Optional.of(User.builder().id(buyerId).build()));
+    when(ticketTypeRepository.findByIdWithLock(ticketTypeId)).thenReturn(Optional.of(ticketType));
+    when(ticketReservationRepository.findByIdempotencyKey("idem-5")).thenReturn(Optional.empty());
+    when(ticketRepository.countByTicketTypeIdAndStatus(ticketTypeId, TicketStatus.PURCHASED))
+        .thenReturn(0);
+    when(ticketReservationRepository.countActiveHolds(ticketTypeId)).thenReturn(0);
+    when(ticketReservationRepository.save(any(TicketReservation.class)))
+        .thenAnswer(invocation -> {
+          TicketReservation saved = invocation.getArgument(0);
+          saved.setId(UUID.randomUUID());
+          return saved;
+        });
+    mockServer.expect(requestTo("https://api.razorpay.com/v1/orders"))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(withServerError());
+
+    assertThatThrownBy(() -> reservationService.reserve(buyerId, eventId, ticketTypeId, 1, "idem-5"))
+        .isInstanceOf(RazorpayIntegrationException.class)
+        .hasCauseInstanceOf(org.springframework.web.client.RestClientException.class);
   }
 
   @Test

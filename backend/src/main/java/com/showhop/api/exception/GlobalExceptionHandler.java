@@ -23,6 +23,13 @@ public class GlobalExceptionHandler {
     return errorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
   }
 
+  /** 502, not 500: the failure is in an upstream dependency (Razorpay), not this app's own logic. */
+  @ExceptionHandler(RazorpayIntegrationException.class)
+  public ResponseEntity<ErrorResponseDto> handleRazorpayIntegrationFailure(
+      RazorpayIntegrationException ex, HttpServletRequest request) {
+    return errorResponse(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
+  }
+
   private ResponseEntity<ErrorResponseDto> errorResponse(
       HttpStatus status, String message, HttpServletRequest request) {
     ErrorResponseDto body = new ErrorResponseDto(
