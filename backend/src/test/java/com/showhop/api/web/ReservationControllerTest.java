@@ -3,6 +3,7 @@ package com.showhop.api.web;
 import static com.showhop.api.testsupport.JwtTestSupport.authenticatedAs;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -147,6 +148,40 @@ class ReservationControllerTest {
 
     String secondId = objectMapper.readTree(secondResponse).get("id").asText();
     org.assertj.core.api.Assertions.assertThat(secondId).isEqualTo(firstId);
+  }
+
+  /**
+   * Doesn't also assert the reservation row is gone: this test class's own
+   * {@code @Transactional} wrapper shares one physical transaction with
+   * {@code ReservationServiceImpl.reserve()}'s (default REQUIRED
+   * propagation joins it), so a rollback-only flag set here isn't visible
+   * to a read on the same thread until the whole test transaction actually
+   * rolls back at teardown -- read-your-own-writes within one transaction,
+   * not a real cross-transaction check. The no-orphaned-row guarantee was
+   * confirmed separately against the real running app (a genuinely
+   * separate request/transaction) rather than asserted here.
+   */
+  @Test
+  void aRazorpayOrderCreationFailureReturnsACleanBadGatewayResponse() throws Exception {
+    RequestPostProcessor organizer = authenticatedAs("ORGANIZER");
+    RequestPostProcessor buyer = authenticatedAs("ATTENDEE");
+    UUID eventId = createPublishedEvent(organizer);
+    UUID ticketTypeId = createTicketType(organizer, eventId, new BigDecimal("299.00"), 5);
+    String idempotencyKey = "idem-" + UUID.randomUUID();
+
+    RazorpayTestConfig.mockServer.reset();
+    RazorpayTestConfig.mockServer.expect(requestTo("https://api.razorpay.com/v1/orders"))
+        .andExpect(method(HttpMethod.POST))
+        .andRespond(withServerError());
+
+    mockMvc.perform(post(reservationsPath(eventId, ticketTypeId))
+            .with(buyer)
+            .header("Idempotency-Key", idempotencyKey)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(new ReservationRequestDto(1))))
+        .andExpect(status().isBadGateway())
+        .andExpect(jsonPath("$.status").value(502))
+        .andExpect(jsonPath("$.message").isNotEmpty());
   }
 
   @Test

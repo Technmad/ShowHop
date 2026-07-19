@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +45,36 @@ public class WebhookDeliveryWorker {
   private final WebhookSigner webhookSigner;
   private final String workerId = "worker-" + UUID.randomUUID();
 
+  /**
+   * Defaults to {@code this} so plain {@code new WebhookDeliveryWorker(...)}
+   * construction in unit tests is unaffected -- Spring overwrites it with
+   * the real transactional proxy via {@link #setSelf}. {@link
+   * #pollAndDeliver} must call {@code self.claimBatch()}/{@code
+   * self.recordOutcome(...)}, not the bare method: calling a
+   * {@code @Transactional} method on {@code this} from within the same
+   * bean is a plain Java call that never goes through Spring's AOP proxy,
+   * so the annotation is silently ignored. Each individual repository
+   * call still gets its own auto-committing mini-transaction from Spring
+   * Data, so the bug doesn't throw immediately -- {@code claimBatch}'s
+   * entity mutations (state=IN_FLIGHT, lockedBy, attempt) and {@code
+   * recordOutcome}'s (state=SUCCEEDED/RETRYING/DEAD_LETTER, circuit
+   * breaker fields) are made against an already-detached entity and are
+   * never flushed. Caught only by running the app against a real
+   * database with the scheduler live -- every existing test constructs
+   * this class directly (bypassing Spring entirely) and asserts against
+   * the in-memory objects it just mutated, which never exercises the gap
+   * between "the repository call returns" and "the change is actually
+   * persisted."
+   */
+  private WebhookDeliveryWorker self = this;
+
+  @Autowired(required = false)
+  public void setSelf(@Lazy WebhookDeliveryWorker self) {
+    this.self = self;
+  }
+
   public void pollAndDeliver() {
-    for (DeliveryTask task : claimBatch()) {
+    for (DeliveryTask task : self.claimBatch()) {
       send(task);
     }
   }
@@ -76,7 +106,7 @@ public class WebhookDeliveryWorker {
           "type", task.type().wireValue(),
           "data", task.payload()));
     } catch (JsonProcessingException e) {
-      recordOutcome(task.deliveryId(), false, null, "Failed to serialize payload: " + e.getMessage());
+      self.recordOutcome(task.deliveryId(), false, null, "Failed to serialize payload: " + e.getMessage());
       return;
     }
 
@@ -93,11 +123,11 @@ public class WebhookDeliveryWorker {
           .body(body)
           .retrieve()
           .toBodilessEntity();
-      recordOutcome(task.deliveryId(), true, 200, null);
+      self.recordOutcome(task.deliveryId(), true, 200, null);
     } catch (RestClientResponseException e) {
-      recordOutcome(task.deliveryId(), false, e.getStatusCode().value(), e.getMessage());
+      self.recordOutcome(task.deliveryId(), false, e.getStatusCode().value(), e.getMessage());
     } catch (RestClientException e) {
-      recordOutcome(task.deliveryId(), false, null, e.getMessage());
+      self.recordOutcome(task.deliveryId(), false, null, e.getMessage());
     }
   }
 

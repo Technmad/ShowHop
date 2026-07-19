@@ -8,6 +8,7 @@ import com.showhop.api.entity.enums.EventStatus;
 import com.showhop.api.entity.enums.ReservationState;
 import com.showhop.api.entity.enums.TicketStatus;
 import com.showhop.api.exception.EventNotFoundException;
+import com.showhop.api.exception.RazorpayIntegrationException;
 import com.showhop.api.exception.TicketReservationNotFoundException;
 import com.showhop.api.exception.TicketTypeNotFoundException;
 import com.showhop.api.exception.TicketsSoldOutException;
@@ -23,6 +24,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 
 @Service
 @RequiredArgsConstructor
@@ -81,7 +83,17 @@ public class ReservationServiceImpl implements ReservationService {
         .build());
 
     long amountInPaise = amountInPaise(ticketType, quantity);
-    var order = razorpayOrderClient.createOrder(amountInPaise, reservation.getId().toString());
+    RazorpayOrderClient.RazorpayOrder order;
+    try {
+      order = razorpayOrderClient.createOrder(amountInPaise, reservation.getId().toString());
+    } catch (RestClientException e) {
+      // Unchecked on purpose: propagating this rolls back the whole
+      // transaction, including the reservation insert above, so a failed
+      // Order creation (bad credentials, network blip, Razorpay outage)
+      // never leaves an orphaned HELD row with no razorpayOrderId behind.
+      throw new RazorpayIntegrationException(
+          "Couldn't create the Razorpay order for reservation '%s'".formatted(reservation.getId()), e);
+    }
     reservation.setRazorpayOrderId(order.id());
 
     return new ReservationInitiationResult(reservation, amountInPaise);
