@@ -9,6 +9,8 @@ import com.showhop.api.entity.enums.WebhookDeliveryState;
 import com.showhop.api.entity.enums.WebhookEndpointStatus;
 import com.showhop.api.entity.enums.WebhookEventType;
 import com.showhop.api.repository.WebhookDeliveryRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,7 @@ public class WebhookDeliveryWorker {
   private final ObjectMapper objectMapper;
   private final WebhookProperties properties;
   private final WebhookSigner webhookSigner;
+  private final MeterRegistry meterRegistry;
   private final String workerId = "worker-" + UUID.randomUUID();
 
   /**
@@ -82,6 +85,7 @@ public class WebhookDeliveryWorker {
   @Transactional
   public List<DeliveryTask> claimBatch() {
     List<WebhookDelivery> claimed = webhookDeliveryRepository.findClaimable(properties.claimBatchSize());
+    meterRegistry.counter("showhop.webhooks.delivery.claimed").increment(claimed.size());
     Instant lease = Instant.now().plus(properties.leaseDuration());
 
     return claimed.stream().map(delivery -> {
@@ -106,6 +110,7 @@ public class WebhookDeliveryWorker {
           "type", task.type().wireValue(),
           "data", task.payload()));
     } catch (JsonProcessingException e) {
+      outcomeCounter(false).increment();
       self.recordOutcome(task.deliveryId(), false, null, "Failed to serialize payload: " + e.getMessage());
       return;
     }
@@ -123,12 +128,19 @@ public class WebhookDeliveryWorker {
           .body(body)
           .retrieve()
           .toBodilessEntity();
+      outcomeCounter(true).increment();
       self.recordOutcome(task.deliveryId(), true, 200, null);
     } catch (RestClientResponseException e) {
+      outcomeCounter(false).increment();
       self.recordOutcome(task.deliveryId(), false, e.getStatusCode().value(), e.getMessage());
     } catch (RestClientException e) {
+      outcomeCounter(false).increment();
       self.recordOutcome(task.deliveryId(), false, null, e.getMessage());
     }
+  }
+
+  private Counter outcomeCounter(boolean success) {
+    return meterRegistry.counter("showhop.webhooks.delivery.outcome", "result", success ? "success" : "failure");
   }
 
   @Transactional

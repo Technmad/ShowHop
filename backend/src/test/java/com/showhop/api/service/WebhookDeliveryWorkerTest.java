@@ -19,6 +19,7 @@ import com.showhop.api.entity.enums.WebhookEventType;
 import com.showhop.api.repository.WebhookDeliveryRepository;
 import com.showhop.api.service.impl.WebhookDeliveryWorker;
 import com.showhop.api.service.impl.WebhookSigner;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -50,7 +51,8 @@ class WebhookDeliveryWorkerTest {
     properties = new WebhookProperties(0, 20, Duration.ofMinutes(2), 3,
         Duration.ofSeconds(30), Duration.ofHours(1), 2, Duration.ofMinutes(5));
     worker = new WebhookDeliveryWorker(
-        webhookDeliveryRepository, builder.build(), new ObjectMapper(), properties, new WebhookSigner());
+        webhookDeliveryRepository, builder.build(), new ObjectMapper(), properties, new WebhookSigner(),
+        new SimpleMeterRegistry());
   }
 
   @Test

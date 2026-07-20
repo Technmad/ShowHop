@@ -14,6 +14,7 @@ import com.showhop.api.repository.TicketReservationRepository;
 import com.showhop.api.repository.TicketTypeRepository;
 import com.showhop.api.repository.UserRepository;
 import com.showhop.api.service.impl.ReservationReaper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,7 +39,8 @@ class ReservationReaperTest {
   private void init() {
     reaper = new ReservationReaper(
         ticketReservationRepository,
-        new RazorpayProperties(null, null, null, null, Duration.ofMinutes(12), 100));
+        new RazorpayProperties(null, null, null, null, Duration.ofMinutes(12), 100),
+        new SimpleMeterRegistry());
   }
 
   @Test
