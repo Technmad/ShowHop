@@ -4,6 +4,7 @@ import com.showhop.api.config.RazorpayProperties;
 import com.showhop.api.entity.TicketReservation;
 import com.showhop.api.entity.enums.ReservationState;
 import com.showhop.api.repository.TicketReservationRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class ReservationReaper {
 
   private final TicketReservationRepository ticketReservationRepository;
   private final RazorpayProperties razorpayProperties;
+  private final MeterRegistry meterRegistry;
 
   @Transactional
   public int expireDueReservations() {
@@ -32,6 +34,7 @@ public class ReservationReaper {
     for (TicketReservation reservation : expired) {
       reservation.setState(ReservationState.EXPIRED);
     }
+    meterRegistry.counter("showhop.reservations.expired").increment(expired.size());
     return expired.size();
   }
 }
