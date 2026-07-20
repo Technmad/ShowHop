@@ -20,6 +20,7 @@ import com.showhop.api.repository.WebhookDeliveryRepository;
 import com.showhop.api.service.impl.WebhookDeliveryWorker;
 import com.showhop.api.service.impl.WebhookSigner;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.tracing.test.simple.SimpleTracer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -63,7 +64,7 @@ class WebhookDeliveryPayloadContractTest {
         webhookDeliveryRepository, builder.build(), objectMapper,
         new WebhookProperties(0, 20, Duration.ofMinutes(2), 8,
             Duration.ofSeconds(30), Duration.ofHours(1), 5, Duration.ofMinutes(5)),
-        signer, new SimpleMeterRegistry());
+        signer, new SimpleMeterRegistry(), new SimpleTracer());
   }
 
   @Test

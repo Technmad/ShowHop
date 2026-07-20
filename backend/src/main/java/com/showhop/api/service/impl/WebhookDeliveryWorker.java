@@ -11,6 +11,8 @@ import com.showhop.api.entity.enums.WebhookEventType;
 import com.showhop.api.repository.WebhookDeliveryRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class WebhookDeliveryWorker {
   private final WebhookProperties properties;
   private final WebhookSigner webhookSigner;
   private final MeterRegistry meterRegistry;
+  private final Tracer tracer;
   private final String workerId = "worker-" + UUID.randomUUID();
 
   /**
@@ -104,6 +107,23 @@ public class WebhookDeliveryWorker {
   }
 
   private void send(DeliveryTask task) {
+    // pollAndDeliver runs on the scheduler thread, with no ambient HTTP
+    // request span to attach to -- this span is deliberately the root of
+    // its own trace so the (auto-instrumented) outbound RestClient call
+    // below has a parent, and the attempt shows up as one connected unit
+    // in the log-rendered trace output instead of a bare, contextless span.
+    Span span = tracer.nextSpan().name("webhook.delivery.send")
+        .tag("delivery.id", task.deliveryId().toString())
+        .tag("delivery.attempt", String.valueOf(task.attempt()))
+        .start();
+    try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
+      sendWithinSpan(task);
+    } finally {
+      span.end();
+    }
+  }
+
+  private void sendWithinSpan(DeliveryTask task) {
     String body;
     try {
       body = objectMapper.writeValueAsString(Map.of(
