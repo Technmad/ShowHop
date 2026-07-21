@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Two console outputs, selected by Spring profile, not two separate
+  logging setups: "json" (structured, for shipping to a log aggregator)
+  and everything else (human readable, for local dev). Both carry
+  traceId/spanId in MDC, populated automatically by Spring Boot once
+  micrometer-tracing-bridge-otel is on the classpath (see TracingConfig),
+  so a single log line can be correlated back to the request or
+  scheduler-tick span that produced it, with no second, hand-rolled
+  correlation-id mechanism needed.
+-->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProfile name="!json">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] traceId=%X{traceId:-} spanId=%X{spanId:-} %logger{36} - %msg%n</pattern>
+      </encoder>
+    </appender>
+  </springProfile>
+
+  <springProfile name="json">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <includeMdcKeyName>traceId</includeMdcKeyName>
+        <includeMdcKeyName>spanId</includeMdcKeyName>
+      </encoder>
+    </appender>
+  </springProfile>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>
