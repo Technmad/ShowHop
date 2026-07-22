@@ -1,7 +1,9 @@
 package com.showhop.api.config;
 
+import com.showhop.api.security.RateLimitFilter;
 import com.showhop.api.security.ShowhopJwtAuthenticationConverter;
 import com.showhop.api.security.UserProvisioningFilter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,13 +13,20 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@EnableConfigurationProperties(RateLimitProperties.class)
 public class SecurityConfig {
+
+  @Bean
+  public RateLimitFilter rateLimitFilter(RateLimitProperties rateLimitProperties) {
+    return new RateLimitFilter(rateLimitProperties);
+  }
 
   @Bean
   public SecurityFilterChain filterChain(
       HttpSecurity http,
       ShowhopJwtAuthenticationConverter jwtAuthenticationConverter,
-      UserProvisioningFilter userProvisioningFilter) throws Exception {
+      UserProvisioningFilter userProvisioningFilter,
+      RateLimitFilter rateLimitFilter) throws Exception {
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.GET, "/api/v1/published-events/**").permitAll()
@@ -41,7 +50,8 @@ public class SecurityConfig {
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(oauth2 -> oauth2
             .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
-        .addFilterAfter(userProvisioningFilter, BearerTokenAuthenticationFilter.class);
+        .addFilterAfter(userProvisioningFilter, BearerTokenAuthenticationFilter.class)
+        .addFilterAfter(rateLimitFilter, UserProvisioningFilter.class);
 
     return http.build();
   }
