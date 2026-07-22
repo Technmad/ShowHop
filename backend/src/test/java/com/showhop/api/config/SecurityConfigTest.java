@@ -72,6 +72,18 @@ class SecurityConfigTest {
   }
 
   @Test
+  void creatingAnApiKeyRequiresOrganizerRole() throws Exception {
+    mockMvc.perform(post("/api/v1/api-keys"))
+        .andExpect(status().isUnauthorized());
+
+    mockMvc.perform(post("/api/v1/api-keys").with(authenticatedAs("ATTENDEE")))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/v1/api-keys").with(authenticatedAs("ORGANIZER")))
+        .andExpect(status().isBadRequest()); // matcher lets it through; empty body fails validation
+  }
+
+  @Test
   void replayingADeliveryRequiresOrganizerRole() throws Exception {
     mockMvc.perform(post("/api/v1/webhook-deliveries/" + UUID.randomUUID() + "/replay")
             .with(authenticatedAs("STAFF")))
