@@ -27,6 +27,9 @@ class WebhookEndpointServiceImplTest {
   @Mock
   private WebhookEndpointRepository webhookEndpointRepository;
 
+  @Mock
+  private AuditLogService auditLogService;
+
   @InjectMocks
   private WebhookEndpointServiceImpl webhookEndpointService;
 
@@ -36,13 +39,21 @@ class WebhookEndpointServiceImplTest {
     WebhookEndpointRequestDto request =
         new WebhookEndpointRequestDto("https://example.com/hooks", List.of("event.published"));
     when(webhookEndpointRepository.save(org.mockito.ArgumentMatchers.any(WebhookEndpoint.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(invocation -> {
+          WebhookEndpoint endpoint = invocation.getArgument(0);
+          endpoint.setId(UUID.randomUUID()); // simulates @GeneratedValue on insert
+          return endpoint;
+        });
 
     WebhookEndpoint saved = webhookEndpointService.registerEndpoint(organizerId, request);
 
     assertThat(saved.getOrganizerId()).isEqualTo(organizerId);
     assertThat(saved.getStatus()).isEqualTo(WebhookEndpointStatus.ACTIVE);
     assertThat(saved.getSecret()).startsWith("whsec_");
+    org.mockito.Mockito.verify(auditLogService).record(
+        org.mockito.ArgumentMatchers.eq(organizerId), org.mockito.ArgumentMatchers.eq(organizerId),
+        org.mockito.ArgumentMatchers.eq("WEBHOOK_ENDPOINT_CREATED"), org.mockito.ArgumentMatchers.eq("WebhookEndpoint"),
+        org.mockito.ArgumentMatchers.eq(saved.getId().toString()), org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -107,6 +118,11 @@ class WebhookEndpointServiceImplTest {
 
     assertThat(result.secretRotated()).isTrue();
     assertThat(result.endpoint().getSecret()).isNotEqualTo(oldSecret).startsWith("whsec_");
+    org.mockito.Mockito.verify(auditLogService).record(
+        org.mockito.ArgumentMatchers.eq(organizerId), org.mockito.ArgumentMatchers.eq(organizerId),
+        org.mockito.ArgumentMatchers.eq("WEBHOOK_ENDPOINT_SECRET_ROTATED"),
+        org.mockito.ArgumentMatchers.eq("WebhookEndpoint"), org.mockito.ArgumentMatchers.eq(endpointId.toString()),
+        org.mockito.ArgumentMatchers.isNull());
   }
 
   private WebhookEndpoint anEndpoint(

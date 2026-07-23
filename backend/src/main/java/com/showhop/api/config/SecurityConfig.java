@@ -52,6 +52,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/webhook-endpoints/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/webhook-deliveries/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/api-keys/**").hasRole("ORGANIZER")
+            .requestMatchers("/api/v1/audit-log/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/ticket-validations/**").hasRole("STAFF")
             .anyRequest().authenticated())
         .csrf(csrf -> csrf.disable())

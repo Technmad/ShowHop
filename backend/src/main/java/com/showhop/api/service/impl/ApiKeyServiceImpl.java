@@ -6,9 +6,11 @@ import com.showhop.api.exception.ApiKeyNotFoundException;
 import com.showhop.api.repository.ApiKeyRepository;
 import com.showhop.api.security.ApiKeyHasher;
 import com.showhop.api.service.ApiKeyService;
+import com.showhop.api.service.AuditLogService;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ApiKeyServiceImpl implements ApiKeyService {
 
   private final ApiKeyRepository apiKeyRepository;
+  private final AuditLogService auditLogService;
   private final SecureRandom secureRandom = new SecureRandom();
 
   @Override
@@ -37,6 +40,8 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         .keyPrefix(ApiKeyHasher.prefixOf(rawKey))
         .hashedKey(ApiKeyHasher.hash(rawKey))
         .build());
+    auditLogService.record(organizerId, organizerId, "API_KEY_CREATED", "ApiKey",
+        apiKey.getId().toString(), Map.of("name", apiKey.getName()));
 
     return new ApiKeyCreationResult(apiKey, rawKey);
   }
@@ -53,5 +58,7 @@ public class ApiKeyServiceImpl implements ApiKeyService {
         .orElseThrow(() -> new ApiKeyNotFoundException(
             "API key with id '%s' was not found".formatted(keyId)));
     apiKey.setRevokedAt(Instant.now());
+    auditLogService.record(organizerId, organizerId, "API_KEY_REVOKED", "ApiKey",
+        apiKey.getId().toString(), null);
   }
 }

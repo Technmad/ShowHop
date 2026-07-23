@@ -3,6 +3,7 @@ package com.showhop.api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,6 +67,8 @@ class RazorpayWebhookServiceImplTest {
   private QrCodeService qrCodeService;
   @Mock
   private WebhookEventPublisher webhookEventPublisher;
+  @Mock
+  private AuditLogService auditLogService;
 
   private MockRestServiceServer mockServer;
   private RazorpayWebhookServiceImpl webhookService;
@@ -80,7 +83,8 @@ class RazorpayWebhookServiceImplTest {
 
     webhookService = new RazorpayWebhookServiceImpl(
         new ObjectMapper(), processedRazorpayEventRepository, ticketReservationRepository,
-        ticketTypeRepository, ticketRepository, qrCodeService, webhookEventPublisher, razorpayRefundClient);
+        ticketTypeRepository, ticketRepository, qrCodeService, webhookEventPublisher, razorpayRefundClient,
+        auditLogService);
   }
 
   @Test
@@ -157,6 +161,9 @@ class RazorpayWebhookServiceImplTest {
     assertThat(reservation.getState()).isEqualTo(ReservationState.FAILED);
     verify(ticketRepository, never()).save(any());
     verifyNoInteractions(qrCodeService, webhookEventPublisher);
+    verify(auditLogService).record(
+        isNull(), eq(reservation.getTicketType().getEvent().getOrganizer().getId()),
+        eq("RESERVATION_AUTO_REFUNDED"), eq("TicketReservation"), eq(reservation.getId().toString()), any());
   }
 
   @Test

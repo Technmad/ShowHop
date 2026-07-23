@@ -6,9 +6,11 @@ import com.showhop.api.entity.WebhookEndpoint;
 import com.showhop.api.entity.enums.WebhookEndpointStatus;
 import com.showhop.api.exception.WebhookEndpointNotFoundException;
 import com.showhop.api.repository.WebhookEndpointRepository;
+import com.showhop.api.service.AuditLogService;
 import com.showhop.api.service.WebhookEndpointService;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookEndpointServiceImpl implements WebhookEndpointService {
 
   private final WebhookEndpointRepository webhookEndpointRepository;
+  private final AuditLogService auditLogService;
   private final SecureRandom secureRandom = new SecureRandom();
 
   @Override
@@ -33,7 +36,10 @@ public class WebhookEndpointServiceImpl implements WebhookEndpointService {
         .subscribedEventTypes(request.subscribedEventTypes())
         .status(WebhookEndpointStatus.ACTIVE)
         .build();
-    return webhookEndpointRepository.save(endpoint);
+    WebhookEndpoint saved = webhookEndpointRepository.save(endpoint);
+    auditLogService.record(organizerId, organizerId, "WEBHOOK_ENDPOINT_CREATED", "WebhookEndpoint",
+        saved.getId().toString(), Map.of("url", saved.getUrl()));
+    return saved;
   }
 
   @Override
@@ -65,6 +71,8 @@ public class WebhookEndpointServiceImpl implements WebhookEndpointService {
 
     boolean rotated = Boolean.TRUE.equals(patch.rotateSecret());
     if (rotated) {
+      auditLogService.record(organizerId, organizerId, "WEBHOOK_ENDPOINT_SECRET_ROTATED",
+          "WebhookEndpoint", endpoint.getId().toString(), null);
       endpoint.setSecret(generateSecret());
     }
 
