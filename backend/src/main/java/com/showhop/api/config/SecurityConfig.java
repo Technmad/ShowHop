@@ -1,5 +1,7 @@
 package com.showhop.api.config;
 
+import com.showhop.api.repository.ApiKeyRepository;
+import com.showhop.api.security.ApiKeyAuthenticationFilter;
 import com.showhop.api.security.RateLimitFilter;
 import com.showhop.api.security.ShowhopJwtAuthenticationConverter;
 import com.showhop.api.security.UserProvisioningFilter;
@@ -22,11 +24,17 @@ public class SecurityConfig {
   }
 
   @Bean
+  public ApiKeyAuthenticationFilter apiKeyAuthenticationFilter(ApiKeyRepository apiKeyRepository) {
+    return new ApiKeyAuthenticationFilter(apiKeyRepository);
+  }
+
+  @Bean
   public SecurityFilterChain filterChain(
       HttpSecurity http,
       ShowhopJwtAuthenticationConverter jwtAuthenticationConverter,
       UserProvisioningFilter userProvisioningFilter,
-      RateLimitFilter rateLimitFilter) throws Exception {
+      RateLimitFilter rateLimitFilter,
+      ApiKeyAuthenticationFilter apiKeyAuthenticationFilter) throws Exception {
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.GET, "/api/v1/published-events/**").permitAll()
@@ -43,6 +51,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/events/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/webhook-endpoints/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/webhook-deliveries/**").hasRole("ORGANIZER")
+            .requestMatchers("/api/v1/api-keys/**").hasRole("ORGANIZER")
             .requestMatchers("/api/v1/ticket-validations/**").hasRole("STAFF")
             .anyRequest().authenticated())
         .csrf(csrf -> csrf.disable())
@@ -50,6 +59,13 @@ public class SecurityConfig {
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(oauth2 -> oauth2
             .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+        // Before the bearer-token filter, not after: it only acts when an
+        // X-Api-Key header is present, so a request with a real JWT and no
+        // API key is untouched, but one presenting a valid key is already
+        // authenticated by the time BearerTokenAuthenticationFilter runs
+        // (which then no-ops, since there's no Authorization header to
+        // process).
+        .addFilterBefore(apiKeyAuthenticationFilter, BearerTokenAuthenticationFilter.class)
         .addFilterAfter(userProvisioningFilter, BearerTokenAuthenticationFilter.class)
         .addFilterAfter(rateLimitFilter, UserProvisioningFilter.class);
 
