@@ -14,6 +14,7 @@ import com.showhop.api.repository.ProcessedRazorpayEventRepository;
 import com.showhop.api.repository.TicketRepository;
 import com.showhop.api.repository.TicketReservationRepository;
 import com.showhop.api.repository.TicketTypeRepository;
+import com.showhop.api.service.AuditLogService;
 import com.showhop.api.service.QrCodeService;
 import com.showhop.api.service.RazorpayWebhookService;
 import com.showhop.api.service.WebhookEventPublisher;
@@ -47,6 +48,7 @@ public class RazorpayWebhookServiceImpl implements RazorpayWebhookService {
   private final QrCodeService qrCodeService;
   private final WebhookEventPublisher webhookEventPublisher;
   private final RazorpayRefundClient razorpayRefundClient;
+  private final AuditLogService auditLogService;
 
   @Override
   @Transactional
@@ -96,6 +98,11 @@ public class RazorpayWebhookServiceImpl implements RazorpayWebhookService {
         // path (PRD 4.2, 7) -- never silently drop a real payment.
         razorpayRefundClient.refundFull(razorpayPaymentId);
         reservation.setState(ReservationState.FAILED);
+        // No human actor for this one -- it's a system-triggered
+        // compensation, not an organizer action.
+        auditLogService.record(null, reservation.getTicketType().getEvent().getOrganizer().getId(),
+            "RESERVATION_AUTO_REFUNDED", "TicketReservation", reservation.getId().toString(),
+            Map.of("razorpayPaymentId", razorpayPaymentId));
         return;
       }
 

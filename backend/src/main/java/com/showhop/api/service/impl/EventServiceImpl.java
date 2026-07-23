@@ -10,6 +10,7 @@ import com.showhop.api.exception.UserNotFoundException;
 import com.showhop.api.mapper.EventMapper;
 import com.showhop.api.repository.EventRepository;
 import com.showhop.api.repository.UserRepository;
+import com.showhop.api.service.AuditLogService;
 import com.showhop.api.service.EventService;
 import com.showhop.api.service.WebhookEventPublisher;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class EventServiceImpl implements EventService {
   private final UserRepository userRepository;
   private final EventMapper eventMapper;
   private final WebhookEventPublisher webhookEventPublisher;
+  private final AuditLogService auditLogService;
 
   @Override
   @Transactional
@@ -72,14 +74,22 @@ public class EventServiceImpl implements EventService {
           "venue", saved.getVenue()));
     }
 
+    if (previousStatus != saved.getStatus()) {
+      auditLogService.record(organizerId, organizerId, "EVENT_STATUS_CHANGED", "Event",
+          saved.getId().toString(), Map.of("from", previousStatus.name(), "to", saved.getStatus().name()));
+    }
+
     return saved;
   }
 
   @Override
   @Transactional
   public void deleteEventForOrganizer(UUID organizerId, UUID eventId) {
-    eventRepository.findByIdAndOrganizerId(eventId, organizerId)
-        .ifPresent(eventRepository::delete);
+    eventRepository.findByIdAndOrganizerId(eventId, organizerId).ifPresent(event -> {
+      eventRepository.delete(event);
+      auditLogService.record(organizerId, organizerId, "EVENT_DELETED", "Event",
+          event.getId().toString(), null);
+    });
   }
 
   @Override

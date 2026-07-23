@@ -37,6 +37,8 @@ class EventServiceImplTest {
   private EventMapper eventMapper;
   @Mock
   private WebhookEventPublisher webhookEventPublisher;
+  @Mock
+  private AuditLogService auditLogService;
 
   @InjectMocks
   private EventServiceImpl eventService;
@@ -106,6 +108,8 @@ class EventServiceImplTest {
 
     verify(webhookEventPublisher).publish(
         eq(organizerId), eq(com.showhop.api.entity.enums.WebhookEventType.EVENT_PUBLISHED), any());
+    verify(auditLogService).record(
+        eq(organizerId), eq(organizerId), eq("EVENT_STATUS_CHANGED"), eq("Event"), eq(eventId.toString()), any());
   }
 
   @Test
@@ -147,6 +151,22 @@ class EventServiceImplTest {
     eventService.deleteEventForOrganizer(organizerId, eventId);
 
     verify(eventRepository, org.mockito.Mockito.never()).delete(any());
+    verify(auditLogService, org.mockito.Mockito.never()).record(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void deletingAnOwnedEventRecordsAnAuditEntry() {
+    UUID organizerId = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    Event existing = Event.builder().id(eventId).build();
+    when(eventRepository.findByIdAndOrganizerId(eventId, organizerId))
+        .thenReturn(Optional.of(existing));
+
+    eventService.deleteEventForOrganizer(organizerId, eventId);
+
+    verify(eventRepository).delete(existing);
+    verify(auditLogService).record(
+        eq(organizerId), eq(organizerId), eq("EVENT_DELETED"), eq("Event"), eq(eventId.toString()), any());
   }
 
   @Test
