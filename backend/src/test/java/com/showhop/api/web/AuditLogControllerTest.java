@@ -31,12 +31,13 @@ class AuditLogControllerTest {
   private UserRepository userRepository;
 
   @Test
-  void anOrganizerOnlySeesTheirOwnAuditLogEntriesNewestFirst() throws Exception {
+  void anOrganizerOnlySeesTheirOwnAuditLogEntriesNewestFirst() throws Exception, InterruptedException {
     User organizer = anOrganizer();
     User otherOrganizer = anOrganizer();
     RequestPostProcessor asOrganizer = authenticatedAs("ORGANIZER", organizer.getId());
 
     auditLogService.record(organizer.getId(), organizer.getId(), "EVENT_DELETED", "Event", "event-1", null);
+    Thread.sleep(5); // occurredAt is stamped by record() itself; a gap makes the ordering assertion below deterministic
     auditLogService.record(organizer.getId(), organizer.getId(), "API_KEY_CREATED", "ApiKey", "key-1",
         Map.of("name", "CI"));
     auditLogService.record(otherOrganizer.getId(), otherOrganizer.getId(), "EVENT_DELETED", "Event", "event-2", null);
